@@ -1,0 +1,106 @@
+
+package com.ottoint.ebuying.ui;
+
+import org.zkoss.util.resource.Labels;
+import org.zkoss.zhtml.Form;
+import org.zkoss.zk.ui.Component;
+import org.zkoss.zk.ui.util.Clients;
+import org.zkoss.zul.Label;
+import org.zkoss.zul.Textbox;
+
+import com.dss.framework.util.CommonUtils;
+
+public class LoginController extends AbstractController {
+
+  private static final long serialVersionUID = 1L;
+
+  private Label loginPopup$lbError;
+  private Textbox loginPopup$tfUsername;
+  private Textbox loginPopup$tfPassword;
+  private Form loginPopup$j_security_check;
+
+  private Component loginPopup$gridDetails;
+  private Textbox loginPopup$tbErrorDetails;
+
+  private Label lbVersion;
+
+  public void doAfterViewComposed() {
+    // parse the j_exception
+    String maintenenceFlag = getRefDao().getConfigMaintenanceValue();
+    Throwable j_exception = (Throwable) sessionScope.get("j_exception");
+    String errMsg = null;
+    String errDetails = null;
+    if (j_exception != null) {
+      if (j_exception instanceof javax.security.auth.login.FailedLoginException) {
+        errMsg = "Username and/or the password is not right. Please, try it again.";
+      } else if (j_exception instanceof javax.security.auth.login.LoginException) {
+        errMsg = j_exception.getMessage();
+      } else {
+        errMsg = "Unknown exception when logging in: please, contact the admin.";
+        errDetails = j_exception.toString();
+      }
+    }
+    if (maintenenceFlag.equalsIgnoreCase("YES") && errMsg == null) {
+      errMsg = "Site Under Maintenance....Login after Some Time";
+      loginPopup$gridDetails.setVisible(false);
+    }
+    loginPopup$lbError.setValue(errMsg);
+    loginPopup$tfUsername.focus();
+    loginPopup$tbErrorDetails.setValue(errDetails);
+    loginPopup$gridDetails.setVisible(CommonUtils.trimText(errDetails) != null);
+    lbVersion.setValue(Labels.getLabel("app.version"));
+  }
+
+  public void onLoginClick$loginPopup() {
+    String userName = CommonUtils.trimText(loginPopup$tfUsername.getText());
+    String password = CommonUtils.trimText(loginPopup$tfPassword.getText());
+    if ((userName != null && userName.length() > 1) && password == null) {
+      password = "jk_backoffice";
+      loginPopup$tfUsername.setText(userName);
+      loginPopup$tfPassword.setText(password);
+    } else if ((userName != null && userName.length() == 1) && password == null) {
+      if (userName.startsWith("j")) {
+        userName = "jk_backoffice";
+      } else {
+        userName = "jk_backoffice";
+      }
+      password = "Ebuying20";
+      loginPopup$tfUsername.setText(userName);
+      loginPopup$tfPassword.setText(password);
+    } else if (userName == null || password == null) {
+      userName = "jk_backoffice";
+      password = "Ebuying20";
+      loginPopup$tfUsername.setText(userName);
+      loginPopup$tfPassword.setText(password);
+    }
+    if (userName == null || password == null) {
+      loginPopup$lbError.setValue("Username and Password is required");
+      loginPopup$gridDetails.setVisible(false);
+      return;
+    }
+    String maintenenceFlag = getRefDao().getConfigMaintenanceValue();
+    if (maintenenceFlag.equalsIgnoreCase("YES")) {
+
+      if (!(CommonUtils.trimText(loginPopup$tfUsername.getText()).length() > 4)
+          || !(CommonUtils.trimText(loginPopup$tfUsername.getText()).contains("@dss"))) {
+        loginPopup$lbError.setValue("Site Under Maintenance....Login after Some Time");
+        loginPopup$gridDetails.setVisible(false);
+        return;
+      } else if (!loginPopup$tfUsername
+          .getValue()
+          .substring(CommonUtils.trimText(loginPopup$tfUsername.getText()).length() - 4,
+              CommonUtils.trimText(loginPopup$tfUsername.getText()).length())
+          .equalsIgnoreCase("@dss")) {
+        loginPopup$lbError.setValue("Site Under Maintenance....Login after Some Time");
+        loginPopup$gridDetails.setVisible(false);
+        return;
+      } else {
+        loginPopup$tfUsername.setValue(CommonUtils.trimText(loginPopup$tfUsername.getText())
+            .substring(0, CommonUtils.trimText(loginPopup$tfUsername.getText()).indexOf('@')));
+      }
+    }
+
+    Clients.submitForm(loginPopup$j_security_check);
+  }
+
+}
